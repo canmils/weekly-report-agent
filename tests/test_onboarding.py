@@ -6,7 +6,7 @@ ROOT=Path(__file__).resolve().parents[1]
 class OnboardingTest(unittest.TestCase):
     def test_no_key_launch_and_save_input(self):
         old=Path.cwd();sys.path.insert(0,str(ROOT))
-        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ,{},clear=True):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ,{"OPENAI_API_KEY": ""}):
             os.chdir(temp)
             try:
                 at=AppTest.from_file(str(ROOT/"app.py")).run()
