@@ -181,7 +181,11 @@ def generate_draft():
     start = time.perf_counter()
 
     with st.spinner("Generating Weekly Report with ChatGPT..."):
-        report_text = generate_weekly_report_by_game(selected_inputs)
+        try:
+            report_text = generate_weekly_report_by_game(selected_inputs)
+        except Exception as error:
+            st.error(str(error))
+            return
 
     end = time.perf_counter()
 
@@ -226,7 +230,11 @@ def generate_clan_draft():
     start = time.perf_counter()
 
     with st.spinner("Generating Clan Weekly Report with ChatGPT..."):
-        report_text = generate_clan_report(selected_inputs)
+        try:
+            report_text = generate_clan_report(selected_inputs)
+        except Exception as error:
+            st.error(str(error))
+            return
 
     end = time.perf_counter()
 

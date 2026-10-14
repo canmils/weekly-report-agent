@@ -5,7 +5,7 @@ from typing import List, Dict
 from docx import Document
 from openai import OpenAI
 
-client = OpenAI()
+
 
 MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 TEMPERATURE = 0.1
@@ -53,6 +53,9 @@ def build_input_text(selected_inputs: List[Dict]) -> str:
 
 # ---------- CORE CALL ----------
 def _chat(system_prompt: str, user_prompt: str) -> str:
+    if not os.getenv("OPENAI_API_KEY"):
+        raise ValueError("Set OPENAI_API_KEY in the terminal before generating a report.")
+    client = OpenAI()
     response = client.chat.completions.create(
         model=MODEL,
         temperature=TEMPERATURE,
