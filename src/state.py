@@ -6,6 +6,7 @@ def init_state():
         "saved_inputs": [],
         "saved_inputs_loaded_from_disk": False,
         "game_report_sources": [],
+        "game_report_input_snapshot": None,
         "game_report_draft_editor": "",
         "saved_game_reports": [],
         "selected_saved_game_report_id": None,

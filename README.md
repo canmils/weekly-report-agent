@@ -1,18 +1,28 @@
 # Weekly Report Agent
 
-A local Streamlit tool for turning pasted production notes into editable weekly reports, first by game and then by team (called a clan in the UI). It helps producers organize source notes and save reviewed drafts; it does not retrieve Jira or send reports.
+A local Streamlit draft assistant for game producers: paste production notes, draft a weekly report by game, review it, then summarize one saved report for your team (called a **clan** in the UI).
 
-## Install
+**Status: local single-user prototype.** It does not fetch Jira, contact colleagues, send email or verify project facts. It is useful for organizing notes and reviewing drafts; time savings and commercial value have not been measured.
 
-Requirements: Git, Python 3.11 or 3.12, and an internet connection to install dependencies. Run all commands from the repository root. Use a virtual environment to keep dependencies separate.
+| Input | Action | Result |
+| --- | --- | --- |
+| Pasted weekly status/call notes | Save Input | Local Markdown source |
+| Selected saved inputs | Generate Weekly Report | Editable OpenAI draft |
+| Reviewed draft | Save Weekly Report | New Markdown file and input snapshots |
+| One explicitly selected saved game report | Generate Clan Weekly Report | Editable team summary |
 
-Windows PowerShell:
+## Install and launch
+
+Requires Git, Python **3.11 or 3.12**, and internet for dependency installation. Run from the repository root. No API key is needed to save inputs, manually edit/save reports, or run offline tests.
+
+Windows PowerShell (activation is unnecessary):
 
 ```powershell
 git clone https://github.com/canmils/weekly-report-agent.git
 cd weekly-report-agent
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1
 ```
 
 macOS/Linux:
@@ -22,89 +32,109 @@ git clone https://github.com/canmils/weekly-report-agent.git
 cd weekly-report-agent
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m streamlit run app.py --server.address 127.0.0.1
 ```
 
-Below, `python` means the virtual-environment interpreter: `.\.venv\Scripts\python.exe` on Windows or `.venv/bin/python` on macOS/Linux. You can instead activate the environment with `.\.venv\Scripts\Activate.ps1` or `source .venv/bin/activate`. If PowerShell blocks activation, use the direct interpreter path above; activation is optional.
+Open http://localhost:8501. Keep the terminal running; Ctrl+C stops the server.
 
-## Optional / paid AI configuration
+## First use: free local walkthrough
 
-A ChatGPT subscription does not include OpenAI API credits. Model calls may incur charges. Use only data you are allowed to send to the provider, review generated output, and never include credentials in issues or commits.
+The [worked example](examples/README.md) provides fictional source notes and **human-written reference reports**. They demonstrate an acceptable result, not measured model quality.
 
-Set the key in the terminal that starts the application:
+1. Open **Inputs**. Choose **Weekly Status**, enter description `Orchard Workshop demo`, and paste [source-notes.md](examples/source-notes.md). Click **Save Input**.
+2. Open **Game Report**. Verify the source checkbox under **Inputs to Use** is selected. Without a key, **Generate Weekly Report** shows an explicit configuration error.
+3. For a free manual walkthrough, paste [game-report.md](examples/game-report.md) into **Draft**. Review and click **Save Weekly Report**. A new entry appears under **Saved Game Reports**.
+4. Open **Clan Report**. Choose that report in **Saved game report to summarize**. AI generation requires a key; for the free walkthrough paste [clan-report.md](examples/clan-report.md) into **Draft**, then click **Save Clan Weekly Report**.
+5. Stop and restart the server. Saved inputs/reports reappear. Unsaved editor text does not survive a fresh session.
 
-PowerShell:
+Each save creates a new timestamped file, including repeated saves. **View** loads a report into the editor; saving creates a new copy rather than updating the original. Delete requires confirmation and removes that report/input file. Deleting a game report does not delete its separate input snapshot folder.
+
+## Enable paid generation
+
+`OPENAI_API_KEY` is **required for either Generate button**. A ChatGPT subscription does not supply API credits. Set the key in the terminal that launches the server, then restart it. The app does **not** load `.env` files automatically.
+
+PowerShell 5.1/7:
 
 ```powershell
 $secret = Read-Host "OpenAI API key" -AsSecureString
 $env:OPENAI_API_KEY = [System.Net.NetworkCredential]::new("", $secret).Password
 Remove-Variable secret
+.\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1
 ```
 
-This works in Windows PowerShell 5.1 and PowerShell 7. The key remains in this process environment until you close the terminal; do not print it or include it in logs.
-
-macOS/Linux (Bash):
+Bash on macOS/Linux:
 
 ```bash
 read -s -p "OpenAI API key: " OPENAI_API_KEY; echo
 export OPENAI_API_KEY
+.venv/bin/python -m streamlit run app.py --server.address 127.0.0.1
 ```
 
-Restart the app after changing configuration. Never use a `NEXT_PUBLIC_` prefix for a secret.
+Optional `OPENAI_MODEL` defaults to `gpt-4o-mini`. Other models must support the existing Chat Completions parameters; arbitrary model compatibility is not established. Each generation invokes one application-level model request; SDK retries can make additional requests. There is no application spending cap.
 
-## First use
+After adding a key, repeat the walkthrough using the Generate buttons instead of pasting reference reports. Check every date, owner, dependency and approval against the source before saving or sharing. Clan generation summarizes **one selected saved game-report file**, which can itself contain multiple games. It does not combine all saved reports, and never silently chooses the latest one.
 
-```sh
-python -m streamlit run app.py --server.address 127.0.0.1
-```
+## Data, backup and recovery
 
-Open http://localhost:8501. You can save notes and edit drafts without a key; generation requires `OPENAI_API_KEY`.
+| Path | Contains |
+| --- | --- |
+| `reports/saved_inputs/` | Original notes with type/description metadata |
+| `reports/game_reports/` | Saved game reports |
+| `reports/clan_reports/` | Saved team summaries |
+| `reports/input_snapshots/<report-name>/` | Source copies for a newly generated game draft, or currently selected inputs for a new manual draft |
 
-1. In **Inputs**, choose Weekly Status, enter description `Fictional demo`, and paste: `Orchard Workshop: art complete; QA starts Monday; sound approval pending with Alex. Next milestone: internal review.`
-2. Click **Save Input**, then select it in **Game Report**.
-3. With a key configured, click **Generate Weekly Report**. Check names, dates and owners against the source; edit the draft and click **Save Weekly Report**.
-4. In **Clan Report**, choose a saved game report and generate/edit/save the team summary. If no report is selected, the latest saved game report is used.
+Changing selected inputs after generation does not change the generated draft's captured source copies. Loading an existing report with **View** clears source attribution for the new editor copy; the original snapshot remains on disk. Clan source labels are session state, not a durable audit trail.
 
-Expected output: Markdown under `reports/saved_inputs/`, `reports/game_reports/`, `reports/clan_reports/`, and source snapshots under `reports/input_snapshots/`. The app does not email anything.
+Stop the server and back up the **entire `reports/` directory** before updating or deleting work. To restore, stop the app and restore that folder to the same repository root, then restart. Test restores using a separate copy. Markdown files can also be opened directly in a text editor. Malformed input files may be skipped during loading; retain their original format.
 
-## Scope, data and limitations
+Inputs/reports are local plain text, without application encryption or accounts. `reports/` is gitignored. Selected source text is sent to OpenAI for game generation; clan generation sends the selected saved report and any local optional guideline text. Use only permitted data. Do not expose this development server publicly or commit credentials/company reports.
 
-Notes and reports are saved locally in plain-text Markdown. Selected text is sent to OpenAI when you generate. Optional `OPENAI_MODEL` defaults to `gpt-4o-mini`. The optional DOCX guideline file is not required. AI output needs human review. This is a single-user local prototype.
+## Limits and supported code
 
-## Update your copy
+- AI can omit or invent details despite prompts. It cannot approve releases, resolve conflicting evidence or certify facts.
+- Draft editors are temporary until saved. Source snapshots help review but are not a compliance-grade audit log.
+- Clan means team; no shared workspace or multi-user permissions are implemented.
+- Optional `prompts/Guideline for Writing Effective Weekly Status Updates.docx` adds clan writing guidance. It is not bundled or required. The built-in prompt works without it.
+- Supported UI: `app.py`, `src/state.py`, `src/ui_inputs.py`, `src/ui_reports.py`, `src/ai_writer.py`. Other parser/batch scripts and prompt text files are legacy utilities and are not the documented UI pipeline.
 
-Stop the application with Ctrl+C. Back up the entire `reports/` folder; it contains your saved work. Check `git status` first; commit your edits on a branch before pulling if you have changed tracked files.
+## Update and troubleshoot
+
+Stop the app, back up `reports/`, and inspect `git status`. Preserve tracked changes on your own branch before pulling. Then run:
 
 ```sh
 git pull --ff-only
-python -m pip install -r requirements.txt
 ```
 
-Use the same virtual-environment interpreter for Python commands. Restart with the run command above. If pulling reports divergent history, resolve your branch changes rather than forcing or discarding work.
+Reinstall with the **same virtual-environment pip command used above**, then relaunch. Resolve divergent Git history rather than discarding local work.
 
-## Troubleshooting
+| Problem | Check |
+| --- | --- |
+| Python/Git not found | Install prerequisite, reopen terminal, check its version |
+| Missing module | Use the same `.venv` interpreter for install and launch |
+| Missing key | Set the environment in the launch terminal and restart; `.env` alone is insufficient |
+| Provider rejects generation | Check account billing/model access/connectivity; previous draft is retained on failure |
+| Port 8501 occupied | Stop the other app or append `--server.port 8502` and open that port |
+| Saved work appears missing | Check working directory; inspect `reports/` and restore backup if necessary |
+| Unsaved draft disappeared | Only saved files are durable; no automatic draft recovery is implemented |
 
-- Command not found: install the prerequisite and reopen the terminal.
-- Missing module: install dependencies using the same interpreter or package manager that starts the app.
-- Missing file: make sure you are in this repository's root directory and have followed the example setup.
-- Port already used: stop the earlier server or select another port where supported.
-- Provider error: check key, account credit, model access and internet connectivity. Repeating a model request can incur another charge.
+## Verify and contribute
 
-## Verify, report bugs and contribute
+Windows:
 
-Compile/import check: `python -m compileall -q app.py src`. Launch the app and follow the fictional example. A live generation check requires your key and is not part of installation verification.
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
 
-Report bugs at https://github.com/canmils/weekly-report-agent/issues with your OS, runtime version, commit (`git rev-parse HEAD`), exact command, sanitized error, and expected versus actual result. Feature requests should describe the user problem and a small example. Do not attach credentials or private company data.
+macOS/Linux:
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the fork → branch → test → pull-request workflow. Installation checks do not establish commercial value, factual accuracy, or AI output quality.
+```sh
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+Tests use real Streamlit state and temporary files with mocked model output; they do not call OpenAI. [Verification record](ONBOARDING_CHECKS.md) distinguishes actual checks from unverified behavior. [GitHub Actions](https://github.com/canmils/weekly-report-agent/actions/workflows/onboarding.yml) runs tests on Ubuntu and Windows.
+
+Report [bugs or suggestions](https://github.com/canmils/weekly-report-agent/issues) with OS/Python version, commit (`git rev-parse HEAD`), exact steps, fictional input, sanitized error and expected/actual behavior. Useful feedback: corrections required, lost context, missing workflow steps and whether it improves on your current process. Never attach keys or private reports. See [CONTRIBUTING.md](CONTRIBUTING.md) for fork, branch and pull-request instructions.
 
 ## License
 
-MIT; see [LICENSE](LICENSE). This covers repository code and authored documentation, not third-party data, trademarks, captured content or your private inputs. Retain dependency and upstream notices.
-
-## Offline onboarding tests
-
-`python -m unittest discover -s tests -v` exercises the first-use path with fictional/mocked input. CI runs this on Ubuntu and Windows; a configured workflow is not proof its remote run has passed. Desktop rendering and external-provider availability require separate checks.
-
-## Verification record
-
-See [ONBOARDING_CHECKS.md](ONBOARDING_CHECKS.md) for checks actually run and limits.
+[MIT](LICENSE) for repository code/authored documentation. Third-party content and your inputs retain their own rights.

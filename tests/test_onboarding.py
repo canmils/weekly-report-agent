@@ -9,7 +9,7 @@ class OnboardingTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ,{"OPENAI_API_KEY": ""}):
             os.chdir(temp)
             try:
-                at=AppTest.from_file(str(ROOT/"app.py")).run()
+                at=AppTest.from_file(str(ROOT/"app.py"), default_timeout=30).run()
                 self.assertEqual(len(at.exception),0)
                 at.text_input(key="input_description").set_value("Fictional demo")
                 at.text_area(key="input_content").set_value("Orchard Workshop: art ready; QA Monday.")

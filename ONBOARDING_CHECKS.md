@@ -1,9 +1,32 @@
-# Onboarding verification
+# Verification record
 
-Date: 2026-10-14. Local Linux environment; Python 3.12 and Node 22/24 as applicable.
+## 15 October 2026: supported local onboarding
 
-Fresh Python environment installed. Streamlit AppTest passed launch, saving a fictional input and explicit missing-key handling. Paid generation was not tested.
+- Fresh Python 3.12 virtual environment installed from `requirements.txt` on Linux.
+- Four automated tests pass with Streamlit AppTest and temporary local files.
+- No-key launch/input save and explicit generation error checked.
+- Mocked game generation receives fictional source notes; edited report saves.
+- Repeated input, game-report and clan-report saves retain separate files.
+- Generated game drafts retain source snapshots.
+- Clan generation requires an explicit saved report; mocked request receives its text.
+- A new app session reloads saved inputs and both report types; unsaved draft is empty.
+- Simulated provider failure preserves the previous draft and reports an error.
 
-## Reading the result
+Run: `.venv/bin/python -m unittest discover -s tests -v` on Linux/macOS;
+use `.\.venv\Scripts\python.exe` instead on Windows.
 
-A passing build or mocked test does not certify live data availability, AI quality, security of public deployment, or market value. CI workflows are provided where appropriate; remote GitHub Actions results must be checked after the commit. Windows/macOS commands are documented, but native runs on those systems were not performed here. Never mark an unavailable check as passed.
+[CI history](https://github.com/canmils/weekly-report-agent/actions/workflows/onboarding.yml)
+runs the same suite on Ubuntu and Windows. Inspect the run for your commit;
+a configured workflow alone is not a pass. Earlier implementation checks belong
+to their historical commits, not a claim that all workflows have been evaluated.
+
+## Not established
+
+- Live paid OpenAI generation, factual accuracy, latency or cost.
+- Visual browser testing, native macOS execution or multi-user hosting.
+- Exhaustive deletion/backup recovery behavior or a durable compliance audit trail.
+- Measured time savings, buyer demand or commercial readiness.
+
+The examples are explicitly human-written references. Automated model mocks verify
+application wiring, not model quality. Dependency ranges remain flexible; there is
+no fully pinned Python dependency lock. Save only permitted data and review drafts.

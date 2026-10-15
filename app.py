@@ -1,3 +1,4 @@
+from pathlib import Path
 import streamlit as st
 
 from src.state import init_state
@@ -15,6 +16,8 @@ st.set_page_config(
     layout="wide",
 )
 
+for folder in ("saved_inputs", "game_reports", "clan_reports", "input_snapshots"):
+    (Path("reports") / folder).mkdir(parents=True, exist_ok=True)
 init_state()
 
 st.markdown(
@@ -61,6 +64,8 @@ st.markdown(
 )
 
 st.title("Weekly Report Agent")
+st.caption("Local draft assistant: paste notes → review a game report → summarize it for your team (clan).")
+st.info("Saving and editing work without a key. Generate sends the selected text to OpenAI and may incur charges. Review facts before sharing; unsaved drafts are not durable.")
 
 tab_inputs, tab_game, tab_clan = st.tabs(
     ["Inputs", "Game Report", "Clan Report"]

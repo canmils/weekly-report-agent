@@ -99,7 +99,7 @@ def render_inputs():
             st.warning("Please add some content before saving.")
             return
 
-        timestamp = datetime.now().strftime("%d_%m_%y_%H_%M")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
         safe_type = st.session_state.input_doc_type.strip().lower().replace(" ", "_")
         safe_desc = make_safe_description(

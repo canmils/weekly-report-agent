@@ -1,4 +1,5 @@
 import uuid
+from copy import deepcopy
 import time
 import streamlit as st
 from datetime import datetime
@@ -55,28 +56,6 @@ def load_saved_game_reports_from_disk():
             st.session_state.saved_game_reports.append(parsed)
         except Exception:
             continue
-
-
-def get_latest_saved_game_report():
-    load_saved_game_reports_from_disk()
-
-    if not st.session_state.saved_game_reports:
-        return None
-
-    reports_with_path = [
-        x for x in st.session_state.saved_game_reports
-        if x.get("file_path")
-    ]
-
-    if not reports_with_path:
-        return None
-
-    latest_report = max(
-        reports_with_path,
-        key=lambda x: Path(x["file_path"]).stat().st_mtime
-    )
-
-    return latest_report
 
 
 def parse_saved_clan_report_file(file_path: Path) -> dict:
@@ -180,7 +159,7 @@ def generate_draft():
 
     start = time.perf_counter()
 
-    with st.spinner("Generating Weekly Report with ChatGPT..."):
+    with st.spinner("Generating weekly report with OpenAI..."):
         try:
             report_text = generate_weekly_report_by_game(selected_inputs)
         except Exception as error:
@@ -195,6 +174,7 @@ def generate_draft():
         f"[{x['type']}] {x['description']}" for x in selected_inputs
     ]
 
+    st.session_state.game_report_input_snapshot = deepcopy(selected_inputs)
     st.session_state.game_report_draft_editor = report_text
 
 
@@ -212,10 +192,7 @@ def generate_clan_draft():
         )
 
     if not selected_report:
-        selected_report = get_latest_saved_game_report()
-
-    if not selected_report:
-        st.warning("No saved weekly report by game was found.")
+        st.warning("Select a saved game report before generating a clan report.")
         return
 
     selected_inputs = [
@@ -229,7 +206,7 @@ def generate_clan_draft():
 
     start = time.perf_counter()
 
-    with st.spinner("Generating Clan Weekly Report with ChatGPT..."):
+    with st.spinner("Generating clan report with OpenAI..."):
         try:
             report_text = generate_clan_report(selected_inputs)
         except Exception as error:
@@ -261,6 +238,8 @@ def render_game_report():
 
     if st.session_state.pending_game_report_update is not None:
         st.session_state.game_report_draft_editor = st.session_state.pending_game_report_update
+        st.session_state.game_report_input_snapshot = []
+        st.session_state.game_report_sources = []
         st.session_state.pending_game_report_update = None
 
     st.text_area(
@@ -280,15 +259,15 @@ def render_game_report():
             st.warning("No report to save.")
             return
 
-        timestamp = datetime.now().strftime("%d_%m_%y_%H_%M")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         report_name = f"weekly_report_{timestamp}"
 
         snapshot_dir = INPUT_SNAPSHOTS_DIR / report_name
         snapshot_dir.mkdir(parents=True, exist_ok=True)
 
-        selected_inputs = [
-            x for x in st.session_state.saved_inputs if x["selected"]
-        ]
+        selected_inputs = st.session_state.game_report_input_snapshot
+        if selected_inputs is None:
+            selected_inputs = [x for x in st.session_state.saved_inputs if x["selected"]]
 
         for i, item in enumerate(selected_inputs, start=1):
             safe_type = item["type"].replace(" ", "_").lower()
@@ -346,16 +325,7 @@ def render_saved_game_reports(title="Saved Weekly Reports", key_prefix="game_rep
         col1, col2, col3 = st.columns([7, 1.2, 1.3])
 
         with col1:
-            checked = st.checkbox(
-                file_name,
-                value=(st.session_state.selected_saved_game_report_id == report_id),
-                key=f"{key_prefix}_select_game_report_{report_id}"
-            )
-
-            if checked:
-                st.session_state.selected_saved_game_report_id = report_id
-            elif st.session_state.selected_saved_game_report_id == report_id:
-                st.session_state.selected_saved_game_report_id = None
+            st.write(file_name)
 
         with col2:
             if st.button("View", key=f"{key_prefix}_view_game_report_{report_id}", use_container_width=True):
@@ -478,6 +448,16 @@ def render_clan_report():
     ensure_ui_timing_state()
 
     st.subheader("Generate Clan Weekly Report")
+    load_saved_game_reports_from_disk()
+    reports = {r["id"]: r for r in st.session_state.saved_game_reports}
+    if st.session_state.selected_saved_game_report_id not in reports:
+        st.session_state.selected_saved_game_report_id = None
+    st.selectbox(
+        "Saved game report to summarize",
+        options=[None, *reports],
+        format_func=lambda value: "Select a report" if value is None else reports[value]["name"],
+        key="selected_saved_game_report_id",
+    )
 
     if st.button("Generate Clan Weekly Report", use_container_width=True, key="generate_clan_report_btn"):
         generate_clan_draft()
@@ -504,7 +484,7 @@ def render_clan_report():
             st.warning("No clan report to save.")
             return
 
-        timestamp = datetime.now().strftime("%d_%m_%y_%H_%M")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         report_name = f"clan_report_{timestamp}"
         file_path = CLAN_REPORTS_DIR / f"{report_name}.md"
 
