@@ -78,5 +78,28 @@ class WorkflowTest(unittest.TestCase):
             self.add_input(app)
             self.assertEqual(len(list(Path("reports/saved_inputs").glob("*.md"))), 2)
 
+    def test_truncated_generation_preserves_both_reviewed_drafts(self):
+        from types import SimpleNamespace
+
+        incomplete = SimpleNamespace(choices=[SimpleNamespace(
+            finish_reason="length",
+            message=SimpleNamespace(content="Partial draft", refusal=None),
+        )])
+        with isolated_app() as app:
+            self.add_input(app)
+            app.text_area(key="game_report_draft_editor").set_value("Reviewed game draft").run()
+            self.click(app, "save_game_report_btn")
+            report_id = app.session_state.saved_game_reports[0]["id"]
+            app.selectbox(key="selected_saved_game_report_id").set_value(report_id).run()
+            app.text_area(key="clan_report_draft_editor").set_value("Reviewed clan draft").run()
+            with patch.dict(os.environ, {"OPENAI_API_KEY": "fixture-key"}), patch("src.ai_writer.OpenAI") as provider:
+                provider.return_value.chat.completions.create.return_value = incomplete
+                self.click(app, "generate_game_report_btn")
+                self.click(app, "generate_clan_report_btn")
+            self.assertEqual(app.text_area(key="game_report_draft_editor").value, "Reviewed game draft")
+            self.assertEqual(app.text_area(key="clan_report_draft_editor").value, "Reviewed clan draft")
+            self.assertEqual(len(list(Path("reports/game_reports").glob("*.md"))), 1)
+            self.assertEqual(len(list(Path("reports/clan_reports").glob("*.md"))), 0)
+
 if __name__ == "__main__":
     unittest.main()

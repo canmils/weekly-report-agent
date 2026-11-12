@@ -55,7 +55,7 @@ def build_input_text(selected_inputs: List[Dict]) -> str:
 def _chat(system_prompt: str, user_prompt: str) -> str:
     if not os.getenv("OPENAI_API_KEY"):
         raise ValueError("Set OPENAI_API_KEY in the terminal before generating a report.")
-    client = OpenAI()
+    client = OpenAI(timeout=60.0, max_retries=1)
     response = client.chat.completions.create(
         model=MODEL,
         temperature=TEMPERATURE,
@@ -65,8 +65,16 @@ def _chat(system_prompt: str, user_prompt: str) -> str:
             {"role": "user", "content": user_prompt},
         ],
     )
-    content = response.choices[0].message.content
-    if not content or not content.strip():
+    if not response.choices:
+        raise ValueError("The model returned no report. Your previous draft is unchanged.")
+    choice = response.choices[0]
+    if choice.message.refusal:
+        raise ValueError("The model declined to write this report. Your previous draft is unchanged.")
+    if choice.finish_reason != "stop":
+        raise ValueError("The model did not finish the report. Your previous draft is unchanged. "
+                         "Try fewer source notes before generating again.")
+    content = choice.message.content
+    if not isinstance(content, str) or not content.strip():
         raise ValueError("The model returned no report. Your previous draft is unchanged.")
     return content.strip()
 
