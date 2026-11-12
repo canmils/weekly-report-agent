@@ -70,7 +70,9 @@ export OPENAI_API_KEY
 .venv/bin/python -m streamlit run app.py --server.address 127.0.0.1
 ```
 
-Optional `OPENAI_MODEL` defaults to `gpt-4o-mini`. Other models must support the existing Chat Completions parameters; arbitrary model compatibility is not established. Each generation invokes one application-level model request; SDK retries can make additional requests. There is no application spending cap.
+Optional `OPENAI_MODEL` defaults to `gpt-4o-mini`. Other models must support the existing Chat Completions parameters; arbitrary model compatibility is not established. Each generation invokes one application-level model request, with a 60-second network timeout per attempt and at most one SDK retry for eligible failures. This is not a total wall-clock deadline or spending cap.
+
+Only completed, nonempty responses replace a draft. A refusal, filtered response or generation cut off by the token limit shows an error and leaves your previous draft and its source attribution unchanged. Try fewer source notes if the report is too long. This completion check does not verify the report's facts; review them against your sources before saving. See [implementation and checks](docs/agent-improvements/report-completion-gate.md).
 
 After adding a key, repeat the walkthrough using the Generate buttons instead of pasting reference reports. Check every date, owner, dependency and approval against the source before saving or sharing. Clan generation summarizes **one selected saved game-report file**, which can itself contain multiple games. It does not combine all saved reports, and never silently chooses the latest one.
 
